@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+from typing import List
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -37,13 +38,14 @@ TEMPLATES = [
                 "django.template.context_processors.media",
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
+                "django.template.context_processors.request",
                 "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: List[str] = []
 
 
 # Application definition
@@ -55,7 +57,10 @@ INSTALLED_APPS = (
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "categories",
+    "categories.editor",
     "test_project.main",
+    "test_project.baker_field_generators_app",
 )
 
 MIDDLEWARE = (
@@ -63,14 +68,16 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.auth.middleware.SessionAuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
+MIDDLEWARE_CLASSES = MIDDLEWARE
 
 ROOT_URLCONF = "test_project.urls"
 
 WSGI_APPLICATION = "test_project.wsgi.application"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Database

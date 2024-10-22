@@ -16,6 +16,8 @@ from .models import (
 class ChannelAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
 
+    search_fields = ["title", "slug", "=text", "post__title", "forbidden_posts__title"]
+
 
 admin.site.register(Channel, ChannelAdmin)
 
@@ -37,6 +39,7 @@ class ListFilter(SimpleListFilter):
 
 class PostAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
+    save_as = True
     list_editable = ["status"]
     list_display = (
         "title",
@@ -52,6 +55,7 @@ class PostAdmin(admin.ModelAdmin):
         "created",
         "modified",
         "published",
+        ("custom_summary", admin.DateFieldListFilter),
         ListFilter,
     )
     readonly_fields = ["created", "modified", "time_diff"]
@@ -64,14 +68,12 @@ class PostAdmin(admin.ModelAdmin):
     ]
     date_hierarchy = "created"
 
-    search_fields = ["title", "text"]
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "author":
-            db_field.default = request.user
-        return super(PostAdmin, self).formfield_for_foreignkey(
-            db_field, request, **kwargs
-        )
+    search_fields = [
+        "title",
+        "text",
+        "^author__first_name",
+        "=channel__followers__first_name",
+    ]
 
 
 class FailPostAdmin(admin.ModelAdmin):
@@ -81,7 +83,7 @@ class FailPostAdmin(admin.ModelAdmin):
     list_display = ["fail_field"]
 
     def fail_field(self, obj):
-        raise Exception
+        raise Exception("This exception should be tested for")
 
 
 class ForbiddenPostAdmin(admin.ModelAdmin):
@@ -91,7 +93,10 @@ class ForbiddenPostAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         False
 
-    def has_delete_permission(self, request):
+    def has_delete_permission(self, request, obj=None):
+        False
+
+    def has_view_permission(self, request, obj=None):
         False
 
 

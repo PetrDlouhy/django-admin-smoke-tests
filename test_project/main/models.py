@@ -2,14 +2,8 @@ import uuid
 
 # Django imports
 from django.conf import settings
-
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
-
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 
 
@@ -18,6 +12,7 @@ class _Abstract(models.Model):
     title = models.CharField(max_length=140, unique=True)
     text = models.TextField(default="")
     rendered_text = models.TextField(default="", blank=True)
+    file = models.FileField(blank=True, null=True)
 
     def __unicode__(self):
         return self.title
@@ -48,7 +43,12 @@ class Channel(_Abstract):
         ordering = ["title"]
 
 
-class Post(_Abstract):
+class ProxyChannel(Channel):
+    class Meta:
+        proxy = True
+
+
+class AbstractPost(_Abstract):
     SUMMARY_LENGTH = 50
 
     STATUSES = [
@@ -97,16 +97,31 @@ class Post(_Abstract):
 
     class Meta:
         ordering = ["published"]
+        abstract = True
 
     def get_absolute_url(self):
         return reverse("post-detail", kwargs={"pk": self.pk})
 
 
-class ForbiddenPost(Post):
+expected_exception = TypeError("This exception should be tested for")
+
+
+class ExceptionChannel(Channel):
+    def save(self, *args, **kwargs):
+        raise expected_exception
+
+
+class Post(AbstractPost):
     pass
 
 
-class FailPost(Post):
+class ForbiddenPost(AbstractPost):
+    channel = models.ForeignKey(
+        Channel, on_delete=models.CASCADE, related_name="forbidden_posts"
+    )
+
+
+class FailPost(AbstractPost):
     pass
 
 
@@ -118,13 +133,9 @@ class HasPrimarySlug(models.Model):
         return reverse("hasprimaryslug-detail", kwargs={"pk": self.pk})
 
 
-HasPrimaryUUID = None
+class HasPrimaryUUID(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=140, unique=True)
 
-if hasattr(models, "UUIDField"):
-
-    class HasPrimaryUUID(models.Model):
-        id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-        title = models.CharField(max_length=140, unique=True)
-
-        def get_absolute_url(self):
-            return reverse("hasprimaryuuid-detail", kwargs={"pk": self.pk})
+    def get_absolute_url(self):
+        return reverse("hasprimaryuuid-detail", kwargs={"pk": self.pk})

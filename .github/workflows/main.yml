@@ -6,7 +6,7 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ '**' ]
+    branches: [ 'master' ]
   pull_request:
     branches: [ '**' ]
 
@@ -22,33 +22,19 @@ jobs:
         
     strategy:
       matrix:
-        DJANGO_VERSION: [ '22', '30', '31', '32', '40', '41']
-        PYTHON_VERSION: ['3.7', '3.8', '3.9', '3.10']
+        DJANGO_VERSION: ['4.0.*', '4.1.*', '4.2.*', '5.0.*', '5.1.*']
+        PYTHON_VERSION: ['3.8', '3.9', '3.10', '3.11']
         exclude:
-          - DJANGO_VERSION: '41'
-            PYTHON_VERSION: '3.7'
-          - DJANGO_VERSION: '40'
-            PYTHON_VERSION: '3.7'
-          - DJANGO_VERSION: '31'
-            PYTHON_VERSION: '3.10'
-          - DJANGO_VERSION: '30'
-            PYTHON_VERSION: '3.10'
-          - DJANGO_VERSION: '22'
-            PYTHON_VERSION: '3.10'
-      fail-fast: false
+          - DJANGO_VERSION: '5.0.*'
+            PYTHON_VERSION: '3.8'
+          - DJANGO_VERSION: '5.0.*'
+            PYTHON_VERSION: '3.9'
 
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+          - DJANGO_VERSION: '5.1.*'
+            PYTHON_VERSION: '3.8'
+          - DJANGO_VERSION: '5.1.*'
+            PYTHON_VERSION: '3.9'
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
@@ -64,22 +50,19 @@ jobs:
 
       - name: Install
         run: |
-           pip install -U pip
+           pip install -U pip setuptools
            pip install -U wheel virtualenv
+           pip install django_coverage_plugin Django==${{matrix.DJANGO_VERSION}}
            pip install tox coveralls
-           python setup.py install
 
       - name: Testing
         run: |
           coverage erase
-          export PYTHON_VER= && tox -e py`echo ${{matrix.PYTHON_VERSION}} | sed s/\\\.//g`-dj${{matrix.DJANGO_VERSION}}
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
+          tox -e py`echo ${{matrix.PYTHON_VERSION}} | sed s/\\\.//g`-dj`echo ${{matrix.DJANGO_VERSION}} | sed s/[.*]//g`
 
       - name: Upload coverage
         run: |
-          coveralls --service=github
+          coveralls --service=github-actions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   flake:
@@ -112,5 +95,6 @@ jobs:
       - uses: actions/checkout@v2
       - name: Running mypy
         run: |
+          pip install -r requirements_test.txt
           pip install mypy django-stubs types-six
           mypy django_admin_smoke_tests

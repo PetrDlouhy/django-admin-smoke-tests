@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
+
 from setuptools import setup
 
 import django_admin_smoke_tests
@@ -18,8 +20,23 @@ def runtests():
 
     os.environ["DJANGO_SETTINGS_MODULE"] = "test_project.settings"
     django.setup()
-    call_command("test", "test_project.main.tests")
+    call_command("test", "test_project")
     sys.exit()
+
+
+def parse_requirements(file_name):
+    requirements = []
+    with open(file_name, "r") as file:
+        for line in file.read().split("\n"):
+            if re.match(r"(\s*#)|(\s*$)", line):
+                continue
+            if re.match(r"\s*-e\s+", line):
+                requirements.append(re.sub(r"\s*-e\s+.*#egg=(.*)$", r"\1", line))
+            elif re.match(r"(\s*git)|(\s*hg)", line):
+                pass
+            else:
+                requirements.append(line)
+    return requirements
 
 
 setup(
@@ -42,10 +59,7 @@ there aren't non-existant fields listed, etc.",
     url="https://github.com/SeanHayes/django-admin-smoke-tests",
     download_url="https://github.com/SeanHayes/django-admin-smoke-tests",
     license="BSD",
-    install_requires=[
-        "django>=1.6",
-        "six",
-    ],
+    install_requires=parse_requirements("requirements.txt"),
     packages=[
         package_name,
     ],
