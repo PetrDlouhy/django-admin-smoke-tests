@@ -444,7 +444,7 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
             response,
             f"<a href='{reverse('admin:index')}'>"
             f"{self.get_site_header(response)}"
-            "</a>"
+            "</a>",
         )
         header_text = (
             f"Select {model._meta.verbose_name} to change"
@@ -613,8 +613,7 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
     def change_view_asserts(self, model, model_admin, response, instance):
         self.assertIn(response.status_code, [200])
         self.assertHeader(
-            response,
-            self.get_site_h1_content(model, model_admin, response, instance)
+            response, self.get_site_h1_content(model, model_admin, response, instance)
         )
         self.assertElementContains(
             response,
