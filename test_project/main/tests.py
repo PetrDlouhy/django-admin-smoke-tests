@@ -5,6 +5,7 @@ import django
 from assert_element import AssertElementMixin
 from categories.models import Category
 from django.contrib import admin
+from django.contrib.admin import SimpleListFilter
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldError
 from django.test import TestCase
@@ -475,3 +476,80 @@ class UnitTestMixinNoInstances(TestCase):
                 ReadonlyPost,
             },
         )
+
+
+class ManyChoicesFilter(SimpleListFilter):
+    title = "many_choices"
+    parameter_name = "many_choices"
+
+    def lookups(self, request, model_admin):
+        return [(str(i), f"choice {i}") for i in range(5)]
+
+    def queryset(self, request, queryset):
+        return queryset
+
+
+class MaxFilterChoicesTest(AssertElementMixin, TestCase):
+    class ManyChoicesPostAdmin(PostAdmin):
+        list_filter = (ManyChoicesFilter,)
+
+    def _request_count(self, test_class_attrs):
+        test_class = type(
+            "SmokeTest", (AdminSiteSmokeTest,), test_class_attrs
+        )()
+        test_class.setUp()
+        test_class.client = self.client
+        calls = []
+        original_get = test_class.client.get
+
+        def counting_get(*args, **kwargs):
+            # Redirect-following re-enters client.get without follow=True;
+            # count only the top-level requests the smoke test issues.
+            if kwargs.get("follow"):
+                calls.append(args[0])
+            return original_get(*args, **kwargs)
+
+        test_class.client.get = counting_get
+        test_class.changelist_filters_view_func(
+            Post, self.ManyChoicesPostAdmin(Post, admin.site)
+        )
+        return len(calls)
+
+    def test_all_choices_requested_by_default(self):
+        self.assertEqual(self._request_count({}), 5)
+
+    def test_max_filter_choices_caps_requests(self):
+        self.assertEqual(self._request_count({"max_filter_choices": 2}), 2)
+
+
+class ShardingTest(TestCase):
+    def _shard_class(self, index, shards=3):
+        return type(
+            f"ShardSmokeTest{index}",
+            (AdminSiteSmokeTest,),
+            {"num_shards": shards, "shard_index": index},
+        )
+
+    def test_shards_partition_modeladmins(self):
+        full = AdminSiteSmokeTest.get_modeladmins()
+        sharded = []
+        for index in range(3):
+            shard = self._shard_class(index).get_modeladmins()
+            self.assertLess(len(shard), len(full))
+            sharded.extend(shard)
+        self.assertEqual(len(sharded), len(full))
+        self.assertSetEqual(
+            {model for model, _ in sharded}, {model for model, _ in full}
+        )
+
+    def test_sharding_is_deterministic(self):
+        self.assertEqual(
+            self._shard_class(1).get_modeladmins(),
+            self._shard_class(1).get_modeladmins(),
+        )
+
+    def test_invalid_shard_index_raises(self):
+        with self.assertRaises(ValueError):
+            self._shard_class(None).get_modeladmins()
+        with self.assertRaises(ValueError):
+            self._shard_class(3).get_modeladmins()

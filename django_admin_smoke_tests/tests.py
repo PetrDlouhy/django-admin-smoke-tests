@@ -78,6 +78,20 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
     strict_mode = False
     print_responses = False
 
+    # Limit how many lookup choices are requested per list_filter in
+    # test_changelist_filters_view. Every choice exercises the same code
+    # path, so on filters with hundreds of data-driven choices (e.g. one
+    # per category) testing a handful is enough. None tests all choices.
+    max_filter_choices = None
+
+    # Split the tested modeladmins into num_shards deterministic slices so
+    # large projects can spread the smoke tests over parallel CI workers.
+    # Define one subclass per shard, each with a distinct shard_index
+    # (0 <= shard_index < num_shards). Every modeladmin lands in exactly
+    # one shard. None runs everything in a single class.
+    num_shards = None
+    shard_index = None
+
     single_attributes = ["date_hierarchy"]
     iter_attributes = [
         "filter_horizontal",
@@ -153,6 +167,15 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
                     f"using only modeladmin {missing_modeladmins}",
                     UserWarning,
                 )
+
+        if cls.num_shards is not None:
+            if cls.shard_index is None or not 0 <= cls.shard_index < cls.num_shards:
+                raise ValueError(
+                    f"shard_index must be in range(num_shards), got "
+                    f"shard_index={cls.shard_index} num_shards={cls.num_shards}"
+                )
+            modeladmins = sorted(modeladmins, key=lambda ma: model_path(ma[0]))
+            modeladmins = modeladmins[cls.shard_index :: cls.num_shards]
 
         return modeladmins
 
@@ -482,6 +505,8 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
                     ]
                 else:
                     raise Exception(f"Unknown filter type: {filter}")
+                if self.max_filter_choices is not None:
+                    filters = filters[: self.max_filter_choices]
                 for key, value in filters:
                     response = self.client.get(
                         reverse(
