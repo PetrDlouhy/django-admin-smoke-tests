@@ -1,6 +1,7 @@
 # This file contain model_bakery field genrators for field types that
 # can be found in various Django apps.
 # TODO: this should be moved to the apps where the field defined.
+import os
 import shutil
 from decimal import Decimal
 
@@ -18,6 +19,9 @@ def gen_datetime():
 
 
 def gen_avatar():
+    # MEDIA_ROOT may not exist yet in a fresh environment; whether some
+    # earlier test already created it must not decide this generator's fate.
+    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
     shutil.copyfile(
         "./blenderhub/apps/assets/test_files/test.jpg",
         f"{settings.MEDIA_ROOT}/test_image",
