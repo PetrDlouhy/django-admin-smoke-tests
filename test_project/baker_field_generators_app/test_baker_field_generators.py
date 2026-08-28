@@ -13,18 +13,18 @@ from django_admin_smoke_tests import baker_field_generators  # noqa: F401
 class BakerFieldGeneratorTests(TestCase):
     def test_baker_field_generators(self):
         baker_fields = baker.make("BakerFields", _fill_optional=True)
-        self.assertEquals(baker_fields.phone_number, "123456789")
-        self.assertEquals(
+        self.assertEqual(baker_fields.phone_number, "123456789")
+        self.assertEqual(
             baker_fields.modified,
             datetime.datetime(2020, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
         )
-        self.assertEquals(
+        self.assertEqual(
             baker_fields.created,
             datetime.datetime(2020, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
         )
         # TODO: this doesn't really test avatar generator
-        self.assertEquals(
+        self.assertEqual(
             baker_fields.avatar, ImageFieldFile(baker_fields, baker_fields.avatar, None)
         )
-        self.assertEquals(baker_fields.json, "{}")
-        self.assertEquals(baker_fields.money, Money(100, "USD"))
+        self.assertEqual(baker_fields.json, "{}")
+        self.assertEqual(baker_fields.money, Money(100, "USD"))
