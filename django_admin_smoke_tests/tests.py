@@ -271,7 +271,7 @@ class AdminSiteSmokeTestMixin(AssertElementMixin):
                 return cls.create_models(model, model_admin, quantity)
             except Exception as e:
                 warning_string = f"Not able to create {model_path(model)} data for {model_admin} creation."
-                logging.exception(e, warning_string)
+                logging.exception(warning_string)
                 warnings.warn(warning_string)
                 if cls.strict_mode:
                     raise ModelAdminCreationException(

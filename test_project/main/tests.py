@@ -222,6 +222,29 @@ class UnitTestMixin(AssertElementMixin, TestCase):
         ):
             test_class.prepare_models(ExceptionChannel, ChannelAdmin)
 
+    def test_prepare_models_failure_logs_real_exception(self):
+        """The log record must carry the creation error itself.
+
+        Regression: ``logging.exception(e, warning_string)`` used the exception
+        as the format string, so rendering the record raised TypeError and the
+        real error never reached the output.
+        """
+
+        class MyAdminSiteSmokeTest(AdminSiteSmokeTest):
+            recipes_prefix = "foo"
+
+        test_class = MyAdminSiteSmokeTest()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with self.assertLogs(level="ERROR") as logs:
+                test_class.prepare_models(ExceptionChannel, ChannelAdmin)
+        record = logs.records[0]
+        self.assertIn(
+            "Not able to create test_project.main.models.ExceptionChannel data",
+            record.getMessage(),
+        )
+        self.assertIs(record.exc_info[1], expected_exception)
+
     def test_prepare_models_error(self):
         class MyAdminSiteSmokeTest(AdminSiteSmokeTest):
             recipes_prefix = "foo"
@@ -234,7 +257,7 @@ class UnitTestMixin(AssertElementMixin, TestCase):
             "test_project.main.models.ExceptionChannel data",
         ) as e:
             test_class.prepare_models(ExceptionChannel, ChannelAdmin)
-        self.assertEquals(e.exception.original_exception, expected_exception)
+        self.assertEqual(e.exception.original_exception, expected_exception)
 
     def test_prepare_models_recipe(self):
         class MyAdminSiteSmokeTest(AdminSiteSmokeTest):
@@ -243,7 +266,7 @@ class UnitTestMixin(AssertElementMixin, TestCase):
         test_class = MyAdminSiteSmokeTest()
         channels = test_class.prepare_models(Channel, ChannelAdmin)
         self.assertTrue(isinstance(channels[0], Channel))
-        self.assertEquals(channels[0].text, "Created by recipe")
+        self.assertEqual(channels[0].text, "Created by recipe")
 
     def test_get_absolute_url(self):
         self.test_class.get_absolute_url_func(
@@ -321,7 +344,7 @@ class UnitTestMixin(AssertElementMixin, TestCase):
         )
         with open("response.html", "w") as f:
             f.write(response.content.decode("utf-8"))
-        self.assertEquals(hasattr(response, "context_data"), False)
+        self.assertEqual(hasattr(response, "context_data"), False)
         autofocus_string = "" if django.VERSION >= (4, 2) else ' autofocus=""'
         self.assertElementContains(
             response,
@@ -371,13 +394,13 @@ class UnitTestMixin(AssertElementMixin, TestCase):
 
     def test_get_instance(self):
         channel = baker.make("Channel")
-        self.assertEquals(
+        self.assertEqual(
             self.test_class.get_instance(Channel, dict(self.sites)[Channel]),
             channel,
         )
 
     def test_get_instance_superuser(self):
-        self.assertEquals(
+        self.assertEqual(
             self.test_class.get_instance(User, dict(self.sites)[User]),
             None,
         )
